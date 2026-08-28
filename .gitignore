@@ -1,4 +1,4 @@
 *.bin
 *.o
 *.iso
-"run"
+run.sh
