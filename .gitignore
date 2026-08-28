@@ -1,4 +1,4 @@
 *.bin
 *.o
-*.iso
+imOS.iso
 run.sh
