@@ -9,8 +9,9 @@ x86_64-elf-gcc -c boot/boot.s -o out/boot/boot.o
 
 x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/kernel.c -o out/kernel/kernel.o
 x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/vga.c -o out/kernel/lib/vga.o
+x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/stdcon.c -o out/kernel/lib/stdcon.o
 
-x86_64-elf-ld -m elf_x86_64 -z max-page-size=0x1000 -T boot/linker.ld out/boot/boot.o out/kernel/kernel.o out/kernel/lib/vga.o -o imOS.bin -nostdlib
+x86_64-elf-ld -m elf_x86_64 -z max-page-size=0x1000 -T boot/linker.ld out/boot/boot.o out/kernel/kernel.o out/kernel/lib/vga.o out/kernel/lib/stdcon.o -o imOS.bin -nostdlib
 
 grub-file --is-x86-multiboot2 imOS.bin
 

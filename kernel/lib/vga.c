@@ -4,7 +4,13 @@
 volatile uint8_t* vga_buffer = (volatile uint8_t*)0xB8000;
 
 void vga_move_cursor(int x, int y) {
-    if(x >= 80 || y >=25) return;
+    if(x >= 80) {
+        x = 0;
+        y++;
+    }
+    if(y >= 25){
+        y = 24;
+    }
     uint16_t pos = y * 80 + x;
 
     outb(0x3D4, 0x0F);

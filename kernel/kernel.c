@@ -1,10 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "lib/vga.h"
+#include "lib/stdcon.h"
 
 void kmain(void) {
-    vga_write_xy('A', 0, 0, 0x07);
-    vga_move_cursor(1, 0);
+    printv2("Hello imOS *i *s", 0x07, 123, "!");
     for(;;)
         asm volatile("hlt");
 }
