@@ -49,13 +49,10 @@ _start:
     cli
     mov $stack_top, %esp
 
-    # 1. Link Page Tables together
-    # Point P4 -> P3
     mov $p3_table, %eax
     or $0b11, %eax
     mov %eax, p4_table
 
-    # Point P3 -> P2
     mov $p2_table, %eax
     or $0b11, %eax
     mov %eax, p3_table
