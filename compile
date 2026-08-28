@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e # Stop script instantly if any command fails
+set -e
 
 rm -rf out isodir imOS.bin imOS.iso
 mkdir -p out/boot
