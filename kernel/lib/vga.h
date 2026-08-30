@@ -3,3 +3,4 @@
 
 void vga_write_xy(char c, int x, int y, uint8_t colour);
 void vga_move_cursor(int x, int y);
+void vga_clear_screen(uint8_t colour);

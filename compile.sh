@@ -14,9 +14,12 @@ x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mn
 x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/stdcon.c -o out/kernel/lib/stdcon.o
 x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/idt.c -o out/kernel/lib/idt.o
 x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/kbhandler.c -o out/kernel/lib/kbhandler.o
+x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/pit.c -o out/kernel/lib/pit.o
+x86_64-elf-gcc -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c kernel/lib/shell.c -o out/kernel/lib/shell.o
 
 x86_64-elf-ld -m elf_x86_64 -z max-page-size=0x1000 -T \
- boot/linker.ld out/boot/boot.o out/kernel/kernel.o out/kernel/lib/vga.o out/kernel/lib/stdcon.o out/kernel/lib/kbhandler.o out/kernel/lib/idt.o out/kernel/lib/interrupts.o \
+ boot/linker.ld out/boot/boot.o out/kernel/kernel.o out/kernel/lib/vga.o out/kernel/lib/stdcon.o out/kernel/lib/kbhandler.o \
+ out/kernel/lib/idt.o out/kernel/lib/interrupts.o out/kernel/lib/shell.o out/kernel/lib/pit.o \
  -o imOS.bin -nostdlib
 
 grub-file --is-x86-multiboot2 imOS.bin

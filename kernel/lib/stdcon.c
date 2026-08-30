@@ -172,3 +172,31 @@ void read(char* dst, size_t length, int echo, uint8_t colour) {
 
     dst[amount] = '\0';
 }
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n) {
+    if (n == 0) {
+        return 0;
+    }
+
+    while (n > 1 && *s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+        n--;
+    }
+
+    return *(const unsigned char *)s1 - *(const unsigned char *)s2;
+}
+
+void clear_screen(uint8_t colour) {
+    vga_clear_screen(colour);
+    cursor_X = 0;
+    cursor_Y = 0;
+}

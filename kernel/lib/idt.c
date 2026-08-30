@@ -1,6 +1,7 @@
 #include "idt.h"
 #include "io.h"
 #include "kbhandler.h"
+#include "pit.h"
 
 #define PIC1_COMMAND 0x20
 #define PIC1_DATA    0x21
@@ -42,6 +43,8 @@ static void idt_set_gate(int vector, uint64_t isr_address, uint16_t gdt_selector
 void init_interrupts(uint16_t kernel_code_selector) {
     pic_remap();
 
+    pit_init(Hz(1000));
+
     for(int i = 0; i < 256; i++) {
         idt_set_gate(i, 0, 0);
         idt[i].type_attr = 0; 
@@ -63,11 +66,8 @@ void isr_handler(struct Registers* regs) {
     } 
     else if (regs->int_no == 33) {
         uint8_t scancode = inb(0x60);
-        if (!(scancode & 0x80)) {
             keyboard_handle_scan(scancode);
-        }
     }
 
-    
     outb(PIC1_COMMAND, 0x20);
 }

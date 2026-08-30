@@ -6,8 +6,10 @@
 #define SCAN_RSHIFT    0x36
 #define SCAN_CAPSLOCK  0x3A
 
-static bool shift_pressed = false;
+static bool lshift_pressed = false;
+static bool rshift_pressed = false;
 static bool caps_lock_active = false;
+
 
 static const char kbd_us_normal[128] = {
     0,  27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', '\b',
@@ -43,49 +45,63 @@ volatile char keybuffer = 0;
 //     else if(id > 7) return 0;
 //     return keybuffer[id];
 // }
+
 char get_char() {return keybuffer;}
 void clear_keybuffer() {keybuffer = 0;}
 
-void keyboard_handle_scan(uint8_t scancode) {
-    if (scancode & 0x80) {
+void keyboard_handle_scan(uint8_t scancode)
+{
+    if (scancode & 0x80)
+    {
         uint8_t released_code = scancode & 0x7F;
 
-        if (released_code == SCAN_LSHIFT || released_code == SCAN_RSHIFT) {
-            shift_pressed = false;
-        }
+        if (released_code == SCAN_LSHIFT)
+            lshift_pressed = false;
+
+        if (released_code == SCAN_RSHIFT)
+            rshift_pressed = false;
+
         return;
     }
 
-    switch (scancode) {
+    switch (scancode)
+    {
         case SCAN_LSHIFT:
-        case SCAN_RSHIFT:
-            shift_pressed = true;
+            lshift_pressed = true;
             return;
-            
+
+        case SCAN_RSHIFT:
+            rshift_pressed = true;
+            return;
+
         case SCAN_CAPSLOCK:
             caps_lock_active = !caps_lock_active;
             return;
-            
-        default:
-            break;
     }
 
-    if (scancode >= 128) return;
+    if (scancode >= 128)
+        return;
 
-    char ascii = shift_pressed ? kbd_us_shift[scancode] : kbd_us_normal[scancode];
+    bool shift_pressed = lshift_pressed || rshift_pressed;
 
-    if (ascii >= 'a' && ascii <= 'z') {
-        if (shift_pressed ^ caps_lock_active) {
-            ascii -= 32;
-        }
-    } else if (ascii >= 'A' && ascii <= 'Z') {
-        if (shift_pressed ^ caps_lock_active) {
-        } else {
-            ascii += 32;
-        }
+    char ascii;
+
+    if (shift_pressed)
+        ascii = kbd_us_shift[scancode];
+    else
+        ascii = kbd_us_normal[scancode];
+
+    if (ascii >= 'a' && ascii <= 'z')
+    {
+        if (shift_pressed ^ caps_lock_active)
+            ascii -= 'a' - 'A';
+    }
+    else if (ascii >= 'A' && ascii <= 'Z')
+    {
+        if (!(shift_pressed ^ caps_lock_active))
+            ascii += 'a' - 'A';
     }
 
-    if (ascii != 0) {
+    if (ascii != 0)
         keybuffer = ascii;
-    }
 }
