@@ -52,6 +52,26 @@ void CMDecho()
 
 }
 
+void CMDechon()
+{
+    for (int i = 1; i < argc; i++)
+    {
+        printv2("*s", 0x07, argv[i]);
+
+        if (i < argc - 1)
+            printv2(" ", 0x07);
+    }
+    print("\n", 0x07);
+}
+
+void CMDimOSfetch() {
+    print("imOS@nasa-pc\n", 0x09);
+    print("|  RAM:  10 NIGGABYTES\n", 0x09);
+    print("|  DISK: 1 NIGGERBYTES\n", 0x09);
+    print("|  CPU:  inTELAVIV 64 Core CPU @ 8Nhz\n", 0x09);
+    print("|  GPU:  RADEON 16834\n", 0x09);
+}
+
 void shell_poweron() {
     int should_run = 1;
     nostack char input[384];
@@ -64,6 +84,12 @@ void shell_poweron() {
         }
         else if(!strncmp(input, "echo", 4)) {
             CMDecho();
+        }
+        else if(!strncmp(input, "echon", 5)) {
+            CMDecho();
+        }
+        else if(!strncmp(input, "imosfetch", 9)) {
+            CMDimOSfetch();
         }
     }
 }

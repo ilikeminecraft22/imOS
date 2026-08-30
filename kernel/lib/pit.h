@@ -12,3 +12,6 @@
 #define SEC(x) (x*1000)
 
 void pit_init(uint32_t frequency);
+
+void sleep(uint64_t ticks);
+uint64_t get_uptime();

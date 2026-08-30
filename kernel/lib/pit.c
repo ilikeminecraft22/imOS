@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "io.h"
 #include "pit.h"
+#include "idt.h"
 
 void pit_init(uint32_t frequency) {
     uint16_t divisor = PIT_FREQUENCY / frequency;

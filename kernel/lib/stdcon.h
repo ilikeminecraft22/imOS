@@ -18,3 +18,8 @@ void read(char* dst, size_t length, int echo, uint8_t colour);
 int strncmp(const char *s1, const char *s2, size_t n);
 int strcmp(const char *s1, const char *s2);
 void clear_screen(uint8_t colour);
+
+void happylog(char* str);
+void sadlog(char* str);
+void angrylog(char* str);
+void normallog(char* str);

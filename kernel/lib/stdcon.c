@@ -200,3 +200,27 @@ void clear_screen(uint8_t colour) {
     cursor_X = 0;
     cursor_Y = 0;
 }
+
+void happylog(char* str) {
+    print("[:)] ", 0x0A);
+    print(str, 0x0F);
+    print("\n", 0x07);
+}
+
+void sadlog(char* str) {
+    print("[:(] ", 0x09);
+    print(str, 0x0F);
+    print("\n", 0x07);
+}
+
+void angrylog(char* str) {
+    print("[>:(] ", 0x04);
+    print(str, 0x0F);
+    print("\n", 0x07);
+}
+
+void normallog(char* str) {
+    print("[:|] ", 0x07);
+    print(str, 0x0F);
+    print("\n", 0x07);
+}

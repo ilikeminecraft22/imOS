@@ -8,13 +8,13 @@
 #define PIC2_COMMAND 0xA0
 #define PIC2_DATA    0xA1
 
+volatile uint64_t timer_ticks = 0;
+
 extern void timer_stub(void);
 extern void keyboard_stub(void);
 
 static struct IDTEntry idt[256];
 static struct IDTR idtr;
-
-volatile uint64_t timer_ticks = 0;
 
 static void pic_remap(void) {
     outb(PIC1_COMMAND, 0x11);
@@ -70,4 +70,15 @@ void isr_handler(struct Registers* regs) {
     }
 
     outb(PIC1_COMMAND, 0x20);
+}
+
+uint64_t get_uptime() {
+    return timer_ticks;
+}
+
+void sleep(uint64_t ticks) {
+    uint64_t start = timer_ticks;
+    while(timer_ticks - start < ticks) {
+        __asm__ volatile("hlt");
+    }
 }

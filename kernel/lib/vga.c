@@ -21,7 +21,8 @@ void vga_move_cursor(int x, int y) {
 }
 
 void vga_write_xy(char c, int x, int y, uint8_t colour) {
-    if(x >= 80 || y >=25) return;
+    if (x < 0 || x >= 80 || y < 0 || y >= 25)
+        return;
 
     uint32_t offset = (y * 80 + x) * 2;
     vga_buffer[offset] = (uint8_t)c;
@@ -29,8 +30,8 @@ void vga_write_xy(char c, int x, int y, uint8_t colour) {
 }
 
 void vga_clear_screen(uint8_t colour) {
-    for(int i = 0; i < 79; i++) {
-        for(int j = 0; j < 24; j++) {
+    for(int i = 0; i < 80; i++) {
+        for(int j = 0; j < 25; j++) {
             vga_write_xy(' ', i, j, colour);
         }
     }
