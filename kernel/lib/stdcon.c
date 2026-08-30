@@ -1,7 +1,10 @@
 #include <stdint.h>
 #include <stdarg.h>
+#include <stddef.h>
+#include <stdbool.h>
 #include "vga.h"
 #include "kbhandler.h"
+#include "stdcon.h"
 
 static int cursor_X = 0;
 static int cursor_Y = 0;
@@ -10,30 +13,47 @@ void validate_coords() {
     if(cursor_X < 0) cursor_X = 0;
     if(cursor_Y < 0) cursor_Y = 0;
     
-    // Jeśli wyjdziemy poza prawą krawędź ekranu (szerokość to 80 znaków)
     if(cursor_X > 79) {
         cursor_X = 0; 
         cursor_Y++;
     }
     
-    // POPRAWKA: Jeśli wyjdziemy poza dół ekranu (wysokość to 25 wierszy: 0 do 24)
     if(cursor_Y > 24) {
-        cursor_Y = 24; // Zatrzymujemy kursor na ostatniej linii
-        // Tutaj w przyszłości dodasz funkcję przewijania ekranu (scrolling)
+        cursor_Y = 24;
+        // scrolling soon
     }
 }
 
+void backspace(uint8_t colour) {
+    if (cursor_X == 0 && cursor_Y == 0)
+        return;
 
-void putc(char c, uint8_t colour) {
-    validate_coords();
-    vga_write_xy(c, cursor_X, cursor_Y, colour);
-    
-    cursor_X++; // Najpierw zwiększamy pozycję logiczną
-    validate_coords(); // Sprawdzamy, czy nowe cursor_X nie przeskoczyło do nowej linii
-    
-    vga_move_cursor(cursor_X, cursor_Y); // Przesuwamy kursor dokładnie tam, gdzie będzie następny znak
+    if (cursor_X == 0) {
+        cursor_X = 79;
+        cursor_Y--;
+    } else {
+        cursor_X--;
+    }
+
+    // Erase the character
+    vga_write_xy(' ', cursor_X, cursor_Y, colour);
+
+    vga_move_cursor(cursor_X, cursor_Y);
 }
 
+void putc(char c, uint8_t colour) {
+    if (c == '\n') {
+        cursor_X = 0;
+        cursor_Y++;
+    }
+    else {
+        vga_write_xy(c, cursor_X, cursor_Y, colour);
+        cursor_X++;
+    }
+
+    validate_coords();
+    vga_move_cursor(cursor_X, cursor_Y);
+}
 
 void print_int(int n, uint8_t colour)
 {
@@ -96,9 +116,59 @@ void printv2(char* string, uint8_t colour, ...) {
 char getc(int echo, uint8_t colour) {
     char c = get_char();
     clear_keybuffer();
-    if(echo && c) {
+    if(echo && c && c != '\b') {
         putc(c, colour);
     }
-    return c; // <-- DOPISZ TO, inaczej funkcja zwróci losowe śmieci z rejestru RAX
+    return c;
 }
 
+void copy(unknown *dst, const unknown *source, size_t length) {
+    for(size_t i = 0; i < length; i++) {
+        dst[i] = source[i];
+    }
+}
+
+void read(char* dst, size_t length, int echo, uint8_t colour) {
+    size_t amount = 0;
+
+    if (length == 0)
+        return;
+
+    while (true) {
+        __asm__ volatile("hlt");
+
+        char c = getc(0, colour);
+
+        if (!c)
+            continue;
+
+        if (c == '\n') {
+            if (echo)
+                putc('\n', colour);
+            break;
+        }
+
+        if (c == '\b') {
+            if (amount > 0) {
+                amount--;
+
+                dst[amount] = '\0';
+
+                if (echo)
+                    backspace(colour);
+            }
+
+            continue;
+        }
+
+        if (amount < length - 1) {
+            dst[amount] = c;
+            amount++;
+
+            if (echo)
+                putc(c, colour);
+        }
+    }
+
+    dst[amount] = '\0';
+}
