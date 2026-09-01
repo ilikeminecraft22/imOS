@@ -195,6 +195,16 @@ int strncmp(const char *s1, const char *s2, size_t n) {
     return *(const unsigned char *)s1 - *(const unsigned char *)s2;
 }
 
+size_t strlen(const char* str)
+{
+    size_t length = 0;
+
+    while (str[length] != '\0')
+        length++;
+
+    return length;
+}
+
 void clear_screen(uint8_t colour) {
     vga_clear_screen(colour);
     cursor_X = 0;

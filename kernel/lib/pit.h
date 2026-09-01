@@ -10,6 +10,11 @@
 
 #define MS(x) (x)
 #define SEC(x) (x*1000)
+#define MIN(x) (SEC(x)*60)
+
+#define MSL(x) (x)
+#define SECL(x) (x/1000)
+#define MINL(x) (SECL(x)/60)
 
 void pit_init(uint32_t frequency);
 
