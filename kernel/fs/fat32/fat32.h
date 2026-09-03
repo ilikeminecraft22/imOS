@@ -27,7 +27,8 @@ typedef enum {
     FAT32_NOT_FOUND,
     FAT32_NOT_A_FILE,
     FAT32_NOT_A_DIRECTORY,
-    FAT32_END_OF_FILE
+    FAT32_END_OF_FILE,
+    FAT32_DIRECTORY_NOT_EMPTY
 } fat32_result_t;
 
 typedef struct {
@@ -129,4 +130,83 @@ fat32_result_t fat32_next_cluster(
     fat32_t* fs,
     uint32_t cluster,
     uint32_t* next
+);
+
+fat32_result_t fat32_write_fat_entry(
+    fat32_t* fs,
+    uint32_t cluster,
+    uint32_t value
+);
+
+fat32_result_t fat32_allocate_cluster(
+    fat32_t* fs,
+    uint32_t* cluster
+);
+
+fat32_result_t fat32_write(
+    fat32_file_t* file,
+    const void* buffer,
+    uint32_t size,
+    uint32_t* bytes_written
+);
+
+static fat32_result_t fat32_get_cluster_at(
+
+    fat32_t* fs,
+
+    fat32_file_t* file,
+
+    uint32_t cluster_index,
+
+    uint32_t* cluster
+
+);
+
+fat32_result_t fat32_create_file(
+    fat32_t* fs,
+    const char* path,
+    fat32_file_t* file
+);
+
+fat32_result_t fat32_find_free_directory_entry(
+    fat32_t* fs,
+    uint32_t directory_cluster,
+    uint32_t* entry_index
+);
+
+bool make_83_name(
+
+    const char* input,
+
+    uint8_t output[11]
+
+);
+
+fat32_result_t fat32_split_parent_path(
+    const char* path,
+    char* parent_path,
+    uint32_t parent_size,
+    char* name,
+    uint32_t name_size
+);
+
+fat32_result_t fat32_initialize_directory(
+    fat32_t* fs,
+    uint32_t directory_cluster,
+    uint32_t parent_cluster
+);
+
+fat32_result_t fat32_mkdir(
+    fat32_t* fs,
+    const char* path
+);
+
+fat32_result_t fat32_remove_file(
+    fat32_t* fs,
+    const char* path
+);
+
+fat32_result_t fat32_remove_directory(
+    fat32_t* fs,
+    const char* path
 );

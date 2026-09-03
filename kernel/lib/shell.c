@@ -382,7 +382,6 @@ void CMDrd(fat32_t* fs)
 
         remaining -= bytes_read;
     }
-
     printv2("\n", 0x07);
 }
 
@@ -457,6 +456,393 @@ void CMDuptime() {
     }
 }
 
+void CMDmf(fat32_t* fs)
+{
+    if (argc < 2) {
+        printv2(
+            "Usage: mf <file>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_file_t file;
+
+    fat32_result_t result =
+        fat32_create_file(
+            fs,
+            path,
+            &file
+        );
+
+    if (result != FAT32_OK) {
+        printv2(
+            "mf: could not create file\n",
+            0x07
+        );
+        return;
+    }
+
+    printv2(
+        "Created: *s\n",
+        0x07,
+        path
+    );
+}
+
+void CMDwt(fat32_t* fs)
+{
+    if (argc < 3) {
+        printv2(
+            "Usage: wt <file> <text>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_file_t file;
+
+    fat32_result_t result =
+        fat32_open(
+            fs,
+            path,
+            &file
+        );
+
+    /*
+     * If the file doesn't exist,
+     * create it first.
+     */
+    if (result == FAT32_NOT_FOUND) {
+
+        result =
+            fat32_create_file(
+                fs,
+                path,
+                &file
+            );
+
+        if (result != FAT32_OK) {
+            printv2(
+                "wt: could not create file\n",
+                0x07
+            );
+            return;
+        }
+
+    } else if (result != FAT32_OK) {
+
+        printv2(
+            "wt: could not open file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    /*
+     * Calculate the total length of all
+     * arguments after the filename.
+     */
+    uint32_t total_length = 0;
+
+    for (int i = 2; i < argc; i++) {
+
+        total_length +=
+            strlen(argv[i]);
+
+        if (i < argc - 1)
+            total_length++;
+    }
+
+    if (total_length == 0) {
+        printv2(
+            "wt: empty text\n",
+            0x07
+        );
+        return;
+    }
+
+    /*
+     * Build the text into a buffer.
+     */
+    char buffer[256];
+
+    uint32_t position = 0;
+
+    for (int i = 2; i < argc; i++) {
+
+        size_t length =
+            strlen(argv[i]);
+
+        for (size_t j = 0;
+             j < length;
+             j++) {
+
+            if (position >=
+                sizeof(buffer) - 1) {
+
+                printv2(
+                    "wt: text too long\n",
+                    0x07
+                );
+
+                return;
+            }
+
+            buffer[position++] =
+                argv[i][j];
+        }
+
+        if (i < argc - 1) {
+
+            if (position >=
+                sizeof(buffer) - 1) {
+
+                printv2(
+                    "wt: text too long\n",
+                    0x07
+                );
+
+                return;
+            }
+
+            buffer[position++] = ' ';
+        }
+    }
+
+    buffer[position] = '\0';
+
+    /*
+     * Write from the beginning of the file.
+     */
+    file.position = 0;
+
+    uint32_t bytes_written = 0;
+
+    result =
+        fat32_write(
+            &file,
+            buffer,
+            position,
+            &bytes_written
+        );
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "wt: write failed\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (bytes_written != position) {
+
+        printv2(
+            "wt: incomplete write\n",
+            0x07
+        );
+
+        return;
+    }
+
+    printv2(
+        "Wrote *i bytes to *s\n",
+        0x07,
+        bytes_written,
+        path
+    );
+}
+
+void CMDmkdir(fat32_t* fs)
+{
+    if (argc < 2) {
+        printv2(
+            "Usage: mkdir <directory>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_result_t result =
+        fat32_mkdir(
+            fs,
+            path
+        );
+
+    if (result != FAT32_OK) {
+        printv2(
+            "mkdir: could not create directory\n",
+            0x07
+        );
+        return;
+    }
+
+    printv2(
+        "Created directory: *s\n",
+        0x07,
+        path
+    );
+}
+
+void CMDrmf(fat32_t* fs)
+{
+    if (argc < 2) {
+        printv2(
+            "Usage: rmf <file>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_result_t result =
+        fat32_remove_file(
+            fs,
+            path
+        );
+
+    if (result == FAT32_NOT_FOUND) {
+
+        printv2(
+            "rmf: file not found\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result == FAT32_NOT_A_FILE) {
+
+        printv2(
+            "rmf: is a directory\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "rmf: could not remove file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    printv2(
+        "Removed: *s\n",
+        0x07,
+        path
+    );
+}
+
+void CMDrmd(fat32_t* fs)
+{
+    if (argc < 2) {
+        printv2(
+            "Usage: rmd <directory>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_result_t result =
+        fat32_remove_directory(
+            fs,
+            path
+        );
+
+    if (result == FAT32_NOT_FOUND) {
+
+        printv2(
+            "rmd: directory not found\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result == FAT32_NOT_A_DIRECTORY) {
+
+        printv2(
+            "rmd: not a directory\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result == FAT32_DIRECTORY_NOT_EMPTY) {
+
+        printv2(
+            "rmd: directory not empty\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "rmd: could not remove directory\n",
+            0x07
+        );
+
+        return;
+    }
+
+    printv2(
+        "Removed directory: *s\n",
+        0x07,
+        path
+    );
+}
+
 void shell_poweron(fat32_t* fs)
 {
     int should_run = 1;
@@ -508,6 +894,21 @@ void shell_poweron(fat32_t* fs)
         else if(!strcmp(argv[0], "cd")) {
             CMDcd(fs);
         }
+        else if(!strcmp(argv[0], "mf")) {
+            CMDmf(fs);
+        }
+        else if(!strcmp(argv[0], "wt")) {
+            CMDwt(fs);
+        }
+        else if(!strcmp(argv[0], "md")) {
+            CMDmkdir(fs);
+        }
+        else if(!strcmp(argv[0], "rmf")) {
+            CMDrmf(fs);
+        }
+        else if(!strcmp(argv[0], "rmd")) {
+            CMDrmd(fs);
+        }
         else if(!strcmp(argv[0], "exit")) {
             should_run = 0;
         }
@@ -520,6 +921,13 @@ void shell_poweron(fat32_t* fs)
             printv2("  ls - List files and directories\n", 0x07);
             printv2("  exit - Exit the shell\n", 0x07);
             printv2("  help - Show this help message\n", 0x07);
+            printv2("  mf - Create an empty file\n", 0x07);
+            printv2("  rd - Read and display a file's contents\n", 0x07);
+            printv2("  cd - Change the current directory\n", 0x07);
+            printv2("  wt - Write text to a file\n", 0x07);
+            printv2("  md - Create a new directory\n", 0x07);
+            printv2("  rmf - Remove a file\n", 0x07);
+            printv2("  rmd - Remove an empty directory\n", 0x07);
         }
         else if(!strcmp(argv[0], "")) {}
         else {
