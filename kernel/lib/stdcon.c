@@ -9,35 +9,63 @@
 static int cursor_X = 0;
 static int cursor_Y = 0;
 
-void validate_coords() {
-    if(cursor_X < 0) cursor_X = 0;
-    if(cursor_Y < 0) cursor_Y = 0;
-    
-    if(cursor_X > 79) {
-        cursor_X = 0; 
-        cursor_Y++;
+#define VGA_WIDTH  80
+#define VGA_HEIGHT 25
+#define VGA_MEMORY ((volatile uint16_t*)0xB8000)
+
+static void scroll_screen(void)
+{
+    // Move every row one row upward.
+    for (int y = 1; y < VGA_HEIGHT; y++) {
+        for (int x = 0; x < VGA_WIDTH; x++) {
+            VGA_MEMORY[(y - 1) * VGA_WIDTH + x] =
+                VGA_MEMORY[y * VGA_WIDTH + x];
+        }
     }
-    
-    if(cursor_Y > 24) {
-        cursor_Y = 24;
-        // scrolling soon
+
+    // Clear the last row.
+    // 0x07 = light gray on black.
+    for (int x = 0; x < VGA_WIDTH; x++) {
+        VGA_MEMORY[(VGA_HEIGHT - 1) * VGA_WIDTH + x] =
+            (uint16_t)0x0700 | ' ';
     }
 }
 
-void backspace(uint8_t colour) {
+void validate_coords(void)
+{
+    if (cursor_X < 0)
+        cursor_X = 0;
+
+    if (cursor_Y < 0)
+        cursor_Y = 0;
+
+    if (cursor_X >= VGA_WIDTH) {
+        cursor_X = 0;
+        cursor_Y++;
+    }
+
+    while (cursor_Y >= VGA_HEIGHT) {
+        scroll_screen();
+        cursor_Y--;
+    }
+
+    vga_move_cursor(cursor_X, cursor_Y);
+}
+
+void backspace(uint8_t colour)
+{
     if (cursor_X == 0 && cursor_Y == 0)
         return;
 
     if (cursor_X == 0) {
-        cursor_X = 79;
+        cursor_X = VGA_WIDTH - 1;
         cursor_Y--;
-    } else {
+    }
+    else {
         cursor_X--;
     }
 
-    // Erase the character
     vga_write_xy(' ', cursor_X, cursor_Y, colour);
-
     vga_move_cursor(cursor_X, cursor_Y);
 }
 
