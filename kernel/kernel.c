@@ -64,12 +64,14 @@ static bool fat32_test_bool(
 
 void kmain(void)
 {
+    print_title_screen();
     uint16_t kernel_code_selector = 0x08;
 
     init_interrupts(
         kernel_code_selector
     );
-
+    happylog("INTERRUPTS INITIALIZED");
+    sleep(100);
     /*
      * Initialize ATA.
      */
@@ -88,7 +90,7 @@ void kmain(void)
     }
 
     happylog("ATA INITIALIZATION SUCCESSFUL");
-
+    sleep(MS(100));
     block_device_t* device =
         ata_get_block_device();
 
@@ -134,31 +136,10 @@ void kmain(void)
     }
 
     happylog("FAT32 MOUNT SUCCESSFUL");
+    sleep(MS(100));
 
-    /*
-     * Show filesystem geometry.
-     */
-    uint32_t cluster_size =
-        fs.bytes_per_sector *
-        fs.sectors_per_cluster;
-
-    printv2(
-        "Bytes per sector: *i\n",
-        0x07,
-        fs.bytes_per_sector
-    );
-
-    printv2(
-        "Sectors per cluster: *i\n",
-        0x07,
-        fs.sectors_per_cluster
-    );
-
-    printv2(
-        "Cluster size: *i bytes\n",
-        0x07,
-        cluster_size
-    );
+    sleep(SEC(1.5));
+    clear_screen(0x07);
 
     /*
      * Start the shell.

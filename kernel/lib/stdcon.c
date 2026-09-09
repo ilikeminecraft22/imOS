@@ -13,6 +13,16 @@ static int cursor_Y = 0;
 #define VGA_HEIGHT 25
 #define VGA_MEMORY ((volatile uint16_t*)0xB8000)
 
+uint8_t vga_color(
+    vga_color_t foreground,
+    vga_color_t background
+)
+{
+    return
+        ((uint8_t)background << 4) |
+        (uint8_t)foreground;
+}
+
 static void scroll_screen(void)
 {
     // Move every row one row upward.
@@ -108,7 +118,7 @@ void print(char *string, uint8_t colour) {
     }
 }
 
-void printv2(char* string, uint8_t colour, ...) {
+void printv2(const char* string, uint8_t colour, ...) {
     va_list lst;
     va_start(lst, colour);
     while(*string) {
@@ -139,6 +149,36 @@ void printv2(char* string, uint8_t colour, ...) {
             break;
         }
     }
+    va_end(lst);
+}
+
+void print_title_screen() {
+    printv2("\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
+
+    printv2("\xBA                    \xBA\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
+
+    printv2("\xBA                    \xBA\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
+
+    printv2(
+        "\xBA"
+        "A\xB2\xB2\xB2\xB2\xB2\xB2\xB2"
+        "imOS"
+        "\xB2\xB2\xB2\xB2\xB2\xB2\xB2\xEA"
+        "\xBA\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK)
+    );
+
+    printv2("\xBA                    \xBA\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
+
+    printv2("\xBA                    \xBA\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
+
+    printv2("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n",
+        vga_color(VGA_LIGHT_BLUE, VGA_BLACK));
 }
 
 char getc(int echo, uint8_t colour) {

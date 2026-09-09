@@ -210,3 +210,14 @@ fat32_result_t fat32_remove_directory(
     fat32_t* fs,
     const char* path
 );
+
+fat32_result_t fat32_truncate(
+    fat32_file_t* file,
+    uint32_t size
+);
+
+fat32_result_t fat32_rename_file(
+    fat32_t* fs,
+    const char* old_path,
+    const char* new_path
+);

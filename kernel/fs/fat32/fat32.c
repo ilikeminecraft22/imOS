@@ -411,29 +411,14 @@ static fat32_result_t fat32_update_file_entry(
     fat32_file_t* file
 )
 {
-    printv2(
-        "ENTER update_file_entry\n",
-        0x07
-    );
-
     if (file == 0 ||
         file->fs == 0)
     {
         return FAT32_ERROR;
     }
 
-    printv2(
-        "if (file==0 ||...\n",
-        0x07
-    );
-
     if (file->directory)
         return FAT32_NOT_A_FILE;
-
-    printv2(
-        "checked if its not a file\n",
-        0x07
-    );
 
     fat32_t* fs = file->fs;
 
@@ -444,18 +429,8 @@ static fat32_result_t fat32_update_file_entry(
         return FAT32_ERROR;
     }
 
-    printv2(
-        "weird line idk what it means some zeros\n",
-        0x07
-    );
-
     if (file->directory_cluster < 2)
         return FAT32_ERROR;
-
-    printv2(
-        "directory cluster too small (<2) :O\n",
-        0x07
-    );
 
     /*
      * A FAT32 directory entry is 32 bytes.
@@ -465,11 +440,6 @@ static fat32_result_t fat32_update_file_entry(
 
     if (entries_per_sector == 0)
         return FAT32_ERROR;
-
-    printv2(
-        "entries per sector == 0\n",
-        0x07
-    );
 
     uint32_t sector_index =
         file->directory_entry_index /
@@ -503,30 +473,6 @@ static fat32_result_t fat32_update_file_entry(
 
     uint32_t directory_sector_cluster;
 
-    printv2(
-        "Directory cluster: *i\n",
-        0x07,
-        file->directory_cluster
-    );
-
-    printv2(
-        "Directory entry index: *i\n",
-        0x07,
-        file->directory_entry_index
-    );
-
-    printv2(
-        "Directory sector index: *i\n",
-        0x07,
-        sector_index
-    );
-
-    printv2(
-        "Directory cluster index: *i\n",
-        0x07,
-        cluster_index
-    );
-
     fat32_result_t result =
         fat32_get_cluster_at(
             fs,
@@ -549,12 +495,6 @@ static fat32_result_t fat32_update_file_entry(
 
         return result;
     }
-
-    printv2(
-        "Directory sector cluster: *i\n",
-        0x07,
-        directory_sector_cluster
-    );
 
     if (result != FAT32_OK)
         return result;
@@ -646,6 +586,192 @@ static fat32_result_t fat32_update_file_entry(
     {
         return FAT32_IO_ERROR;
     }
+
+    return FAT32_OK;
+}
+
+static fat32_result_t fat32_update_directory_entry_size(
+    fat32_t* fs,
+    uint32_t directory_cluster,
+    uint32_t entry_index,
+    uint32_t size
+)
+{
+    if (fs == 0 ||
+        fs->device == 0)
+        return FAT32_ERROR;
+
+    uint32_t entries_per_sector =
+        fs->bytes_per_sector / 32;
+
+    if (entries_per_sector == 0)
+        return FAT32_ERROR;
+
+    uint32_t sector_index =
+        entry_index / entries_per_sector;
+
+    uint32_t entry_in_sector =
+        entry_index % entries_per_sector;
+
+    uint32_t cluster_index =
+        sector_index /
+        fs->sectors_per_cluster;
+
+    uint32_t sector_in_cluster =
+        sector_index %
+        fs->sectors_per_cluster;
+
+    fat32_file_t directory;
+
+    directory.fs = fs;
+    directory.first_cluster =
+        directory_cluster;
+    directory.size = 0;
+    directory.position = 0;
+    directory.directory_cluster = 0;
+    directory.directory_entry_index = 0;
+    directory.directory = true;
+
+    uint32_t cluster;
+
+    fat32_result_t result =
+        fat32_get_cluster_at(
+            fs,
+            &directory,
+            cluster_index,
+            &cluster
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    uint32_t lba =
+        fat32_cluster_to_lba(
+            fs,
+            cluster
+        );
+
+    if (lba == 0)
+        return FAT32_ERROR;
+
+    lba += sector_in_cluster;
+
+    if (!fs->device->read(
+        lba,
+        1,
+        sector_buffer
+    ))
+        return FAT32_IO_ERROR;
+
+    uint32_t offset =
+        entry_in_sector * 32;
+
+    /*
+     * Directory entry file size is at
+     * offset 28.
+     */
+    write_u32(
+        &sector_buffer[offset + 28],
+        size
+    );
+
+    if (!fs->device->write(
+        lba,
+        1,
+        sector_buffer
+    ))
+        return FAT32_IO_ERROR;
+
+    return FAT32_OK;
+}
+
+static fat32_result_t fat32_rename_directory_entry(
+    fat32_t* fs,
+    uint32_t directory_cluster,
+    uint32_t entry_index,
+    const uint8_t short_name[11]
+)
+{
+    if (fs == 0 ||
+        fs->device == 0 ||
+        short_name == 0)
+        return FAT32_ERROR;
+
+    uint32_t entries_per_sector =
+        fs->bytes_per_sector / 32;
+
+    if (entries_per_sector == 0)
+        return FAT32_ERROR;
+
+    uint32_t sector_index =
+        entry_index / entries_per_sector;
+
+    uint32_t entry_in_sector =
+        entry_index % entries_per_sector;
+
+    uint32_t cluster_index =
+        sector_index /
+        fs->sectors_per_cluster;
+
+    uint32_t sector_in_cluster =
+        sector_index %
+        fs->sectors_per_cluster;
+
+    fat32_file_t directory;
+
+    directory.fs = fs;
+    directory.first_cluster =
+        directory_cluster;
+    directory.size = 0;
+    directory.position = 0;
+    directory.directory_cluster = 0;
+    directory.directory_entry_index = 0;
+    directory.directory = true;
+
+    uint32_t cluster;
+
+    fat32_result_t result =
+        fat32_get_cluster_at(
+            fs,
+            &directory,
+            cluster_index,
+            &cluster
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    uint32_t lba =
+        fat32_cluster_to_lba(
+            fs,
+            cluster
+        );
+
+    if (lba == 0)
+        return FAT32_ERROR;
+
+    lba += sector_in_cluster;
+
+    if (!fs->device->read(
+        lba,
+        1,
+        sector_buffer
+    ))
+        return FAT32_IO_ERROR;
+
+    uint32_t offset =
+        entry_in_sector * 32;
+
+    for (uint32_t i = 0; i < 11; i++)
+        sector_buffer[offset + i] =
+            short_name[i];
+
+    if (!fs->device->write(
+        lba,
+        1,
+        sector_buffer
+    ))
+        return FAT32_IO_ERROR;
 
     return FAT32_OK;
 }
@@ -2735,18 +2861,6 @@ fat32_result_t fat32_write(
     uint32_t cluster =
         start_cluster;
 
-    printv2(
-        "Writing from cluster *i\n",
-        0x07,
-        start_cluster
-    );
-
-    printv2(
-        "Final required cluster index: *i\n",
-        0x07,
-        final_cluster_index
-    );
-
     while (*bytes_written < size)
     {
         uint32_t sector_in_cluster =
@@ -2892,20 +3006,8 @@ fat32_result_t fat32_write(
             if (result != FAT32_OK)
                 return result;
 
-            printv2(
-                "Moving from cluster *i to *i\n",
-                0x07,
-                cluster,
-                next_cluster
-            );
-
             cluster =
                 next_cluster;
-                printv2(
-                    "Now writing cluster *i\n",
-                    0x07,
-                    cluster
-                );
         }
     }
 
@@ -2922,10 +3024,6 @@ fat32_result_t fat32_write(
     if (file->size != old_size ||
     file->first_cluster != old_first_cluster)
     {
-        printv2(
-            "Updating directory entry...\n",
-            0x07
-        );
 
         fat32_result_t result =
             fat32_update_file_entry(
@@ -2947,10 +3045,6 @@ fat32_result_t fat32_write(
             return result;
         }
 
-        printv2(
-            "Directory entry updated\n",
-            0x07
-        );
     }
 
     return FAT32_OK;
@@ -3027,6 +3121,191 @@ static fat32_result_t fat32_free_cluster_chain(
 
         current = next;
     }
+}
+
+static fat32_result_t fat32_free_cluster_chain_after(
+    fat32_t* fs,
+    uint32_t cluster
+)
+{
+    if (fs == 0 ||
+        fs->device == 0)
+        return FAT32_ERROR;
+
+    if (cluster < 2 ||
+        cluster > fs->total_clusters + 1)
+        return FAT32_ERROR;
+
+    uint32_t next;
+
+    fat32_result_t result =
+        fat32_read_fat_entry(
+            fs,
+            cluster,
+            &next
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    next &= 0x0FFFFFFF;
+
+    /*
+     * The current cluster becomes the
+     * end of the file.
+     */
+    result =
+        fat32_write_fat_entry(
+            fs,
+            cluster,
+            0x0FFFFFFF
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * Nothing after this cluster.
+     */
+    if (next >= 0x0FFFFFF8)
+        return FAT32_OK;
+
+    /*
+     * Invalid/bad next cluster.
+     */
+    if (next == 0x0FFFFFF7 ||
+        next < 2 ||
+        next > fs->total_clusters + 1)
+        return FAT32_ERROR;
+
+    /*
+     * Free everything after the current
+     * cluster.
+     */
+    return fat32_free_cluster_chain(
+        fs,
+        next
+    );
+}
+
+fat32_result_t fat32_truncate(
+    fat32_file_t* file,
+    uint32_t size
+)
+{
+    if (file == 0 ||
+        file->fs == 0)
+        return FAT32_ERROR;
+
+    fat32_t* fs = file->fs;
+
+    if (file->directory)
+        return FAT32_NOT_A_FILE;
+
+    /*
+     * We don't support extending files
+     * with truncate yet.
+     */
+    if (size > file->size)
+        return FAT32_ERROR;
+
+    /*
+     * Nothing to do.
+     */
+    if (size == file->size)
+        return FAT32_OK;
+
+    /*
+     * Truncating to zero releases the
+     * entire cluster chain.
+     */
+    if (size == 0) {
+
+        if (file->first_cluster != 0) {
+
+            fat32_result_t result =
+                fat32_free_cluster_chain(
+                    fs,
+                    file->first_cluster
+                );
+
+            if (result != FAT32_OK)
+                return result;
+        }
+
+        fat32_result_t result =
+            fat32_update_directory_entry_size(
+                fs,
+                file->directory_cluster,
+                file->directory_entry_index,
+                0
+            );
+
+        if (result != FAT32_OK)
+            return result;
+
+        file->first_cluster = 0;
+        file->size = 0;
+        file->position = 0;
+
+        return FAT32_OK;
+    }
+
+    /*
+     * Calculate which cluster contains
+     * the final byte.
+     */
+    uint32_t cluster_size =
+        fs->bytes_per_sector *
+        fs->sectors_per_cluster;
+
+    uint32_t cluster_index =
+        (size - 1) /
+        cluster_size;
+
+    uint32_t last_cluster;
+
+    fat32_result_t result =
+        fat32_get_cluster_at(
+            fs,
+            file,
+            cluster_index,
+            &last_cluster
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * Free everything after the final
+     * cluster and make it EOC.
+     */
+    result =
+        fat32_free_cluster_chain_after(
+            fs,
+            last_cluster
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    result =
+        fat32_update_directory_entry_size(
+            fs,
+            file->directory_cluster,
+            file->directory_entry_index,
+            size
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    file->size = size;
+
+    if (file->position > size)
+        file->position = size;
+
+    return FAT32_OK;
 }
 
 fat32_result_t fat32_opendir(
@@ -4167,4 +4446,200 @@ fat32_result_t fat32_remove_directory(
         fs,
         found_cluster
     );
+}
+
+fat32_result_t fat32_rename_file(
+    fat32_t* fs,
+    const char* old_path,
+    const char* new_path
+)
+{
+    if (fs == 0 ||
+        old_path == 0 ||
+        new_path == 0)
+        return FAT32_ERROR;
+
+    char old_parent_path[256];
+    char old_name[256];
+
+    fat32_result_t result =
+        fat32_split_parent_path(
+            old_path,
+            old_parent_path,
+            sizeof(old_parent_path),
+            old_name,
+            sizeof(old_name)
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    char new_parent_path[256];
+    char new_name[256];
+
+    result =
+        fat32_split_parent_path(
+            new_path,
+            new_parent_path,
+            sizeof(new_parent_path),
+            new_name,
+            sizeof(new_name)
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * Resolve the source parent.
+     */
+    fat32_path_result_t old_parent;
+
+    result =
+        fat32_resolve_path(
+            fs,
+            old_parent_path,
+            &old_parent
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    if (!old_parent.directory)
+        return FAT32_NOT_A_DIRECTORY;
+
+    /*
+     * Find the source file.
+     */
+    uint32_t found_cluster;
+    uint32_t found_size;
+    bool is_directory;
+    uint32_t found_entry_index;
+
+    result =
+        fat32_find_in_directory(
+            fs,
+            old_parent.cluster,
+            old_name,
+            &found_cluster,
+            &found_size,
+            &is_directory,
+            &found_entry_index
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * For now mv only handles files.
+     */
+    if (is_directory)
+        return FAT32_NOT_A_FILE;
+
+    /*
+     * Resolve the destination parent.
+     */
+    fat32_path_result_t new_parent;
+
+    result =
+        fat32_resolve_path(
+            fs,
+            new_parent_path,
+            &new_parent
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    if (!new_parent.directory)
+        return FAT32_NOT_A_DIRECTORY;
+
+    /*
+     * Make sure the destination doesn't
+     * already exist.
+     */
+    uint32_t existing_cluster;
+    uint32_t existing_size;
+    bool existing_directory;
+    uint32_t existing_entry_index;
+
+    result =
+        fat32_find_in_directory(
+            fs,
+            new_parent.cluster,
+            new_name,
+            &existing_cluster,
+            &existing_size,
+            &existing_directory,
+            &existing_entry_index
+        );
+
+    if (result == FAT32_OK)
+        return FAT32_ERROR;
+
+    if (result != FAT32_NOT_FOUND)
+        return result;
+
+    /*
+     * Convert the destination name to 8.3.
+     */
+    uint8_t short_name[11];
+
+    if (!make_83_name(
+            new_name,
+            short_name
+        ))
+        return FAT32_ERROR;
+
+    /*
+     * Find a free directory entry in the
+     * destination directory BEFORE touching
+     * the source.
+     */
+    uint32_t new_entry_index;
+
+    result =
+        fat32_find_free_directory_entry(
+            fs,
+            new_parent.cluster,
+            &new_entry_index
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * Create the new directory entry using
+     * the exact same cluster chain and size.
+     */
+    result =
+        fat32_write_directory_entry_data(
+            fs,
+            new_parent.cluster,
+            new_entry_index,
+            short_name,
+            FAT32_ATTR_ARCHIVE,
+            found_cluster,
+            found_size
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    /*
+     * Now delete the old directory entry.
+     *
+     * IMPORTANT:
+     * We do NOT free the cluster chain.
+     */
+    result =
+        fat32_delete_directory_entry(
+            fs,
+            old_parent.cluster,
+            found_entry_index
+        );
+
+    if (result != FAT32_OK)
+        return result;
+
+    return FAT32_OK;
 }

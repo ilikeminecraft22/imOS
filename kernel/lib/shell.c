@@ -843,6 +843,202 @@ void CMDrmd(fat32_t* fs)
     );
 }
 
+void CMDtrc(fat32_t* fs)
+{
+    if (argc < 3) {
+        printv2(
+            "Usage: trc <file> <size>\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    /*
+     * Parse the size manually so we don't
+     * depend on strtoul() being available.
+     */
+    uint32_t size = 0;
+
+    for (uint32_t i = 0;
+         argv[2][i] != '\0';
+         i++) {
+
+        char c = argv[2][i];
+
+        if (c < '0' || c > '9') {
+            printv2(
+                "trc: invalid size\n",
+                0x07
+            );
+            return;
+        }
+
+        uint32_t digit =
+            (uint32_t)(c - '0');
+
+        /*
+         * Prevent uint32_t overflow.
+         */
+        if (size >
+            (0xFFFFFFFF - digit) / 10) {
+
+            printv2(
+                "trc: size too large\n",
+                0x07
+            );
+            return;
+        }
+
+        size =
+            size * 10 + digit;
+    }
+
+    fat32_file_t file;
+
+    fat32_result_t result =
+        fat32_open(
+            fs,
+            path,
+            &file
+        );
+
+    if (result == FAT32_NOT_FOUND) {
+
+        printv2(
+            "trc: file not found\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result == FAT32_NOT_A_FILE) {
+
+        printv2(
+            "trc: not a file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "trc: could not open file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    result =
+        fat32_truncate(
+            &file,
+            size
+        );
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "trc: operation failed\n",
+            0x07
+        );
+
+        return;
+    }
+
+    printv2(
+        "Truncated *s to *i bytes\n",
+        0x07,
+        path,
+        size
+    );
+}
+
+void CMDmv(fat32_t* fs)
+{
+    if (argc < 3) {
+        printv2(
+            "Usage: mv <old> <new>\n",
+            0x07
+        );
+        return;
+    }
+
+    char old_path[256];
+    char new_path[256];
+
+    normalize_path(
+        argv[1],
+        old_path,
+        sizeof(old_path)
+    );
+
+    normalize_path(
+        argv[2],
+        new_path,
+        sizeof(new_path)
+    );
+
+    fat32_result_t result =
+        fat32_rename_file(
+            fs,
+            old_path,
+            new_path
+        );
+
+    if (result == FAT32_NOT_FOUND) {
+
+        printv2(
+            "mv: file not found\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result == FAT32_NOT_A_FILE) {
+
+        printv2(
+            "mv: not a file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    if (result != FAT32_OK) {
+
+        printv2(
+            "mv: could not move file\n",
+            0x07
+        );
+
+        return;
+    }
+
+    printv2(
+        "Renamed *s -> *s\n",
+        0x07,
+        old_path,
+        new_path
+    );
+}
+
+void CMDpwd()
+{
+    printv2("*s\n", 0x07, cwd);
+}
+
 void shell_poweron(fat32_t* fs)
 {
     int should_run = 1;
@@ -852,7 +1048,7 @@ void shell_poweron(fat32_t* fs)
 
         printv2(
             "[imOS~*s] > ",
-            0x0A,
+            vga_color(VGA_LIGHT_BLUE, VGA_BLACK),
             cwd
         );
 
@@ -909,6 +1105,15 @@ void shell_poweron(fat32_t* fs)
         else if(!strcmp(argv[0], "rmd")) {
             CMDrmd(fs);
         }
+        else if(!strcmp(argv[0], "trc")) {
+            CMDtrc(fs);
+        }
+        else if(!strcmp(argv[0], "mv")) {
+            CMDmv(fs);
+        }
+        else if(!strcmp(argv[0], "pwd")) {
+            CMDpwd();
+        }
         else if(!strcmp(argv[0], "exit")) {
             should_run = 0;
         }
@@ -928,6 +1133,9 @@ void shell_poweron(fat32_t* fs)
             printv2("  md - Create a new directory\n", 0x07);
             printv2("  rmf - Remove a file\n", 0x07);
             printv2("  rmd - Remove an empty directory\n", 0x07);
+            printv2("  trc - Truncate a file to a specified size\n", 0x07);
+            printv2("  mv - Rename a file\n", 0x07);
+            printv2("  pwd - Print working directory", 0x07);
         }
         else if(!strcmp(argv[0], "")) {}
         else {
