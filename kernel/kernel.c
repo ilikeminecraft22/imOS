@@ -64,6 +64,7 @@ static bool fat32_test_bool(
 
 void kmain(void)
 {
+    bool keep_alive = true;
     print_title_screen();
     uint16_t kernel_code_selector = 0x08;
 
@@ -137,20 +138,28 @@ void kmain(void)
 
     happylog("FAT32 MOUNT SUCCESSFUL");
     sleep(MS(100));
+    fat32_dir_t dir_check;
+    fat32_file_t file_check;
+    uint32_t bytes_written;
+    if(fat32_opendir(&fs, "/OPT", &dir_check) != 0) {
+        normallog("/OPT NOT FOUND, CREATING...");
+        fat32_mkdir(&fs, "/OPT");
+        fat32_create_file(&fs, "/OPT/USERNAME", &file_check);
+        fat32_write(&file_check, "user", 4, &bytes_written);
+    }
+    if(fat32_open(&fs, "/OPT/USERNAME", &file_check) != 0) {
+        normallog("/OPT/USERNAME NOT FOUND, CREATING...");
+        fat32_create_file(&fs, "/OPT/USERNAME", &file_check);
+        fat32_write(&file_check, "user", 4, &bytes_written);
+    }
 
     sleep(SEC(1.5));
-    clear_screen(0x07);
+    clear_screen(vga_color(VGA_LIGHT_GRAY, VGA_BLACK));
 
-    /*
-     * Start the shell.
-     */
-    shell_poweron(&fs);
+    shell_poweron(&fs, &keep_alive);
 
-    /*
-     * Keep the kernel alive.
-     */
-    for (;;) {
-
-        __asm__ volatile("hlt");
+    if(keep_alive) {
+        for(;;)
+            __asm__ volatile("hlt");
     }
 }

@@ -1039,16 +1039,249 @@ void CMDpwd()
     printv2("*s\n", 0x07, cwd);
 }
 
-void shell_poweron(fat32_t* fs)
+static void exec_script(
+    fat32_t *fs,
+    char *buffer,
+    uint32_t size,
+    bool *keep_alive
+)
 {
-    int should_run = 1;
+    uint32_t position = 0;
+
+    while (position < size && *keep_alive) {
+
+        char *line = &buffer[position];
+
+        /*
+         * Find the end of this line.
+         */
+        while (
+            position < size &&
+            buffer[position] != '\n' &&
+            buffer[position] != '\r'
+        ) {
+            position++;
+        }
+
+        /*
+         * Terminate the line.
+         */
+        if (position < size) {
+            buffer[position] = '\0';
+        }
+
+        /*
+        * Ignore blank lines and comments.
+        */
+        if (line[0] != '\0' && line[0] != '#') {
+
+            argc = parse_args(
+                line,
+                argv,
+                16
+            );
+
+            if (argc > 0) {
+                exec(fs, keep_alive);
+            }
+        }
+
+        /*
+         * Skip \r and/or \n.
+         */
+        while (
+            position < size &&
+            (
+                buffer[position] == '\n' ||
+                buffer[position] == '\r'
+            )
+        ) {
+            position++;
+        }
+    }
+
+    /*
+     * Don't leave the shell with the script's arguments.
+     */
+    argc = 0;
+    argv[0] = NULL;
+}
+
+void CMDrun(fat32_t *fs, bool *keep_alive)
+{
+    if (argc < 2) {
+        print(
+            "run: not enough arguments\n"
+            "usage: run <filename>\n"
+            "\n"
+            "note: run only supports files up to 1024 bytes of size.\n",
+            0x07
+        );
+        return;
+    }
+
+    char path[256];
+
+    normalize_path(
+        argv[1],
+        path,
+        sizeof(path)
+    );
+
+    fat32_file_t codefile;
+
+    fat32_result_t result =
+        fat32_open(
+            fs,
+            path,
+            &codefile
+        );
+
+    if (result != FAT32_OK) {
+        print(
+            "run: unable to open file\n",
+            0x07
+        );
+        return;
+    }
+
+    nostack char bfr[1025];
+
+    uint32_t bytes_read = 0;
+
+    result =
+        fat32_read(
+            &codefile,
+            bfr,
+            1024,
+            &bytes_read
+        );
+
+    if (result != FAT32_OK) {
+        print(
+            "run: unable to read file\n",
+            0x07
+        );
+        return;
+    }
+
+    bfr[bytes_read] = '\0';
+
+    exec_script(
+        fs,
+        bfr,
+        bytes_read,
+        keep_alive
+    );
+}
+
+void exec(fat32_t *fs, bool *keep_alive) {
+    if(argc==0) {}
+    else if(!strcmp(argv[0], "clear")) {
+        CMDclear();
+    }
+    else if(!strcmp(argv[0], "echon")) {
+        CMDechon();
+    }
+    else if(!strcmp(argv[0], "echo")) {
+        CMDecho();
+    }
+    else if(!strcmp(argv[0], "uptime")) {
+        CMDuptime();
+    }
+    else if(!strcmp(argv[0], "ls")) {
+        CMDls(fs);
+    }
+    else if(!strcmp(argv[0], "rd")) {
+        CMDrd(fs);
+    }
+    else if(!strcmp(argv[0], "cd")) {
+        CMDcd(fs);
+    }
+    else if(!strcmp(argv[0], "mf")) {
+        CMDmf(fs);
+    }
+    else if(!strcmp(argv[0], "wt")) {
+        CMDwt(fs);
+    }
+    else if(!strcmp(argv[0], "md")) {
+        CMDmkdir(fs);
+    }
+    else if(!strcmp(argv[0], "rmf")) {
+        CMDrmf(fs);
+    }
+    else if(!strcmp(argv[0], "rmd")) {
+        CMDrmd(fs);
+    }
+    else if(!strcmp(argv[0], "trc")) {
+        CMDtrc(fs);
+    }
+    else if(!strcmp(argv[0], "mv")) {
+        CMDmv(fs);
+    }
+    else if(!strcmp(argv[0], "pwd")) {
+        CMDpwd();
+    }
+    else if(!strcmp(argv[0], "exit")) {
+        *keep_alive = 0;
+    }
+    else if(!strcmp(argv[0], "run")) {
+        CMDrun(fs, keep_alive);
+    }
+    else if(!strcmp(argv[0], "help")) {
+        printv2("Available commands:\n", 0x07);
+        printv2("  clear - Clear the screen\n", 0x07);
+        printv2("  echo - Print text to the screen\n", 0x07);
+        printv2("  echon - Print text to the screen with a newline\n", 0x07);
+        printv2("  uptime - Show system uptime\n", 0x07);
+        printv2("  ls - List files and directories\n", 0x07);
+        printv2("  exit - Exit the shell\n", 0x07);
+        printv2("  help - Show this help message\n", 0x07);
+        printv2("  mf - Create an empty file\n", 0x07);
+        printv2("  rd - Read and display a file's contents\n", 0x07);
+        printv2("  cd - Change the current directory\n", 0x07);
+        printv2("  wt - Write text to a file\n", 0x07);
+        printv2("  md - Create a new directory\n", 0x07);
+        printv2("  rmf - Remove a file\n", 0x07);
+        printv2("  rmd - Remove an empty directory\n", 0x07);
+        printv2("  trc - Truncate a file to a specified size\n", 0x07);
+        printv2("  mv - Rename a file\n", 0x07);
+        printv2("  pwd - Print working directory\n", 0x07);
+        printv2("  run - Run a file with commands", 0x07);
+    }
+    else if(!strcmp(argv[0], "")) {}
+    else {
+        printv2(
+            "Unknown command: *s\n",
+            0x07,
+            argv[0]
+        );
+    }
+}
+
+void shell_poweron(fat32_t* fs, bool *keep_alive)
+{
     nostack char input[384];
 
-    while(should_run) {
+    fat32_file_t fusername;
+    if(fat32_open(fs, "/OPT/USERNAME", &fusername) != FAT32_OK)
+    {
+        sadlog("FAILED TO OPEN /OPT/USERNAME");
+        return;
+    }
+    nostack char username[36];
+    uint32_t bytes_read;
+    if(fat32_read(&fusername, username, 36, &bytes_read) != FAT32_OK) {
+        sadlog("FAILED TO READ /OPT/USERNAME");
+        return;
+    }
+
+    while(*keep_alive) {
 
         printv2(
-            "[imOS~*s] > ",
+            "*s@imOS~*s>> ",
             vga_color(VGA_LIGHT_BLUE, VGA_BLACK),
+            username,
             cwd
         );
 
@@ -1065,85 +1298,7 @@ void shell_poweron(fat32_t* fs)
                 argv,
                 16
             );
-
-        if (argc == 0)
-            continue;
-
-        if(!strcmp(argv[0], "clear")) {
-            CMDclear();
-        }
-        else if(!strcmp(argv[0], "echon")) {
-            CMDechon();
-        }
-        else if(!strcmp(argv[0], "echo")) {
-            CMDecho();
-        }
-        else if(!strcmp(argv[0], "uptime")) {
-            CMDuptime();
-        }
-        else if(!strcmp(argv[0], "ls")) {
-            CMDls(fs);
-        }
-        else if(!strcmp(argv[0], "rd")) {
-            CMDrd(fs);
-        }
-        else if(!strcmp(argv[0], "cd")) {
-            CMDcd(fs);
-        }
-        else if(!strcmp(argv[0], "mf")) {
-            CMDmf(fs);
-        }
-        else if(!strcmp(argv[0], "wt")) {
-            CMDwt(fs);
-        }
-        else if(!strcmp(argv[0], "md")) {
-            CMDmkdir(fs);
-        }
-        else if(!strcmp(argv[0], "rmf")) {
-            CMDrmf(fs);
-        }
-        else if(!strcmp(argv[0], "rmd")) {
-            CMDrmd(fs);
-        }
-        else if(!strcmp(argv[0], "trc")) {
-            CMDtrc(fs);
-        }
-        else if(!strcmp(argv[0], "mv")) {
-            CMDmv(fs);
-        }
-        else if(!strcmp(argv[0], "pwd")) {
-            CMDpwd();
-        }
-        else if(!strcmp(argv[0], "exit")) {
-            should_run = 0;
-        }
-        else if(!strcmp(argv[0], "help")) {
-            printv2("Available commands:\n", 0x07);
-            printv2("  clear - Clear the screen\n", 0x07);
-            printv2("  echo - Print text to the screen\n", 0x07);
-            printv2("  echon - Print text to the screen without a newline\n", 0x07);
-            printv2("  uptime - Show system uptime\n", 0x07);
-            printv2("  ls - List files and directories\n", 0x07);
-            printv2("  exit - Exit the shell\n", 0x07);
-            printv2("  help - Show this help message\n", 0x07);
-            printv2("  mf - Create an empty file\n", 0x07);
-            printv2("  rd - Read and display a file's contents\n", 0x07);
-            printv2("  cd - Change the current directory\n", 0x07);
-            printv2("  wt - Write text to a file\n", 0x07);
-            printv2("  md - Create a new directory\n", 0x07);
-            printv2("  rmf - Remove a file\n", 0x07);
-            printv2("  rmd - Remove an empty directory\n", 0x07);
-            printv2("  trc - Truncate a file to a specified size\n", 0x07);
-            printv2("  mv - Rename a file\n", 0x07);
-            printv2("  pwd - Print working directory", 0x07);
-        }
-        else if(!strcmp(argv[0], "")) {}
-        else {
-            printv2(
-                "Unknown command: *s\n",
-                0x07,
-                argv[0]
-            );
-        }
+        
+        exec(fs, keep_alive);
     }
 }

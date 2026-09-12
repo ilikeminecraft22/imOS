@@ -2702,11 +2702,6 @@ fat32_result_t fat32_write(
     if (cluster_size == 0)
         return FAT32_ERROR;
 
-    /*
-     * For now, don't support writing past EOF
-     * with a gap. That requires zero-filling
-     * the gap first.
-     */
     if (file->position > file->size)
         return FAT32_ERROR;
 

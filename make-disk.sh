@@ -12,13 +12,6 @@ mkdir -p /tmp/imos-fat
 
 sudo mount -o loop disk.img /tmp/imos-fat
 
-echo "This is the original TEST.TXT file." | sudo tee /tmp/imos-fat/TEST.TXT > /dev/null
-sudo mkdir -p /tmp/imos-fat/TESTDIR
-echo "HELLO, WORLD!" | sudo tee /tmp/imos-fat/TESTDIR/HELLO.TXT > /dev/null
-echo "HELLO, WORLD LONG NESTED FILENAME!" | sudo tee "/tmp/imos-fat/TESTDIR/LONG NESTED FILENAME.TXT" > /dev/null
-echo "HELLO, WORLD LONG FILENAME!" | sudo tee "/tmp/imos-fat/LONG FILENAME TEST.TXT" > /dev/null
-
-
 sudo umount /tmp/imos-fat
 
 sudo chown "$USER:$USER" disk.img

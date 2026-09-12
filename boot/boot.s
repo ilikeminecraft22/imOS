@@ -93,8 +93,4 @@ _start64:
     mov %ax, %ss
 
     call kmain
-
-.hlt_loop:
-    hlt
-    jmp .hlt_loop
 	
